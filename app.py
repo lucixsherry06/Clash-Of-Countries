@@ -9,13 +9,17 @@ from PIL import Image
 import re
 from io import BytesIO
 import pycountry
+import plotly.express as px
 
-# ========== Load Data ==========
-df = pd.read_csv("cleaned_countries.csv")
+if "match_history" not in st.session_state:
+    st.session_state.match_history = []
+
+# Load data and models
+df = pd.read_csv("battle_ready_countries_final.csv")
 model = joblib.load("battle_model.pkl")
+scaler = joblib.load("battle_scaler.pkl")
 
-# ========== Helper Functions ==========
-
+# Helper Functions
 def get_country_code(country_name):
     try:
         return pycountry.countries.lookup(country_name).alpha_2.lower()
@@ -24,16 +28,12 @@ def get_country_code(country_name):
 
 def get_stats(country):
     row = df[df['Country'] == country].iloc[0]
-    def num(val):
-        if pd.isna(val): return 0.0
-        match = re.search(r"[\d,.]+", str(val))
-        return float(match.group().replace(",", "")) if match else 0.0
     return {
-        "gdp": num(row['Economy: Real GDP (purchasing power parity)']),
-        "military": num(row['Military and Security: Military expenditures']),
-        "literacy": num(row['People and Society: Literacy - total population']),
-        "birth": num(row['People and Society: Birth rate']),
-        "death": num(row['People and Society: Death rate']),
+        "gdp": row['gdp'],
+        "military": row['military'],
+        "literacy": row['literacy'],
+        "birth": row['birth'],
+        "death": row['death']
     }
 
 def show_flag(country_name):
@@ -44,25 +44,70 @@ def show_flag(country_name):
             response = requests.get(url)
             if response.status_code == 200:
                 st.image(Image.open(BytesIO(response.content)), width=80)
-            else:
-                st.write("⚠️ Flag not available.")
         except:
             st.write("⚠️ Error fetching flag.")
-    else:
-        st.write("⚠️ Invalid country name.")
 
-# ========== Page Settings ==========
+def draw_normalized_bar_chart(stats1, stats2, country1, country2):
+    categories = list(stats1.keys())
+    values1 = [stats1[k] for k in categories]
+    values2 = [stats2[k] for k in categories]
+    max_vals = [max(v1, v2) for v1, v2 in zip(values1, values2)]
+    norm1 = [v / m if m != 0 else 0 for v, m in zip(values1, max_vals)]
+    norm2 = [v / m if m != 0 else 0 for v, m in zip(values2, max_vals)]
+
+    df_chart = pd.DataFrame({
+        'Stat': categories * 2,
+        'Normalized Value': norm1 + norm2,
+        'Country': [country1] * len(categories) + [country2] * len(categories)
+    })
+
+    fig = px.bar(df_chart, x='Stat', y='Normalized Value', color='Country', barmode='group', title="📊 Stat Comparison")
+    st.plotly_chart(fig, use_container_width=True)
+
+def calculate_score(stats):
+    gdp_score = stats['gdp'] / 978007000000
+    military_score = stats['military'] / 30
+    literacy_score = stats['literacy'] / 100
+    birth_score = stats['birth'] / 46.6
+    death_score = 1 - (stats['death'] / 18.6)
+    return (gdp_score * 0.3 + military_score * 0.25 + literacy_score * 0.2 + birth_score * 0.15 + death_score * 0.1)
+
+# Page Config
 st.set_page_config(page_title="Country Clash", layout="wide")
+# 🎵 Background music with mute/unmute toggle using JS
+st.markdown("### 🔊 Background Music")
+mute_toggle = st.checkbox("🔇 Mute Music", value=False)
+
+components.html(f"""
+    <audio id="bg-music" autoplay loop>
+        <source src="music/8-bit-loop-189494.mp3" type="audio/mp3">
+        Your browser does not support the audio element.
+    </audio>
+
+    <script>
+        const audio = document.getElementById('bg-music');
+        let isMuted = {str(mute_toggle).lower()};
+
+        window.onload = function() {{
+            if (audio) {{
+                audio.volume = isMuted ? 0.0 : 0.6;
+            }}
+        }}
+
+        document.addEventListener('DOMContentLoaded', () => {{
+            if (audio) {{
+                audio.volume = isMuted ? 0.0 : 0.6;
+            }}
+        }});
+    </script>
+""", height=0)
+
+#Title and Description
 st.markdown("<h1 style='text-align: center;'>🌍 Country Clash</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Choose two countries to battle it out and see which one comes out on top!</p>", unsafe_allow_html=True)
 
-# ========== Intro Music (Autoplay) ==========
-st.markdown("""
-<audio autoplay>
-  <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mp3">
-</audio>
-""", unsafe_allow_html=True)
 
-# ========== Country Selection ==========
+# Country Selection
 country_list = df['Country'].dropna().unique()
 col1, col2 = st.columns(2)
 with col1:
@@ -70,14 +115,17 @@ with col1:
 with col2:
     country2 = st.selectbox("Choose Country B", country_list)
 
-# ========== Display Flags ==========
-col1, col2 = st.columns(2)
-with col1:
+# Flags
+draw1, draw2 = st.columns(2)
+with draw1:
     show_flag(country1)
-with col2:
+with draw2:
     show_flag(country2)
 
-# ========== Click Sound Effect ==========
+# Mode Selection
+mode = st.radio("Choose Battle Mode:", ["🤖 AI Model", "🧮 Formula-Based Scoring"])
+
+# Click Sound Effect
 components.html(
     """
     <script>
@@ -90,7 +138,7 @@ components.html(
     """, height=0
 )
 
-# ========== Battle Button ==========
+# Battle Logic
 if st.button("⚔️ Start the Battle"):
     if country1 == country2:
         st.warning("⚠️ Choose different countries!")
@@ -100,49 +148,58 @@ if st.button("⚔️ Start the Battle"):
             stats1 = get_stats(country1)
             stats2 = get_stats(country2)
 
-        # Show Stats
         st.subheader(f"📊 {country1} Stats:")
         st.write(stats1)
         st.subheader(f"📊 {country2} Stats:")
         st.write(stats2)
 
-        # Show Pre-Battle Animation
-        st.markdown("### ⚔️ Battle Starts In...")
         gif_col = st.empty()
         gif_col.markdown("""
-            <div style="display: flex; justify-content: center; margin-top: 10px;">
-                <img src="https://media.giphy.com/media/3o7bu3XilJ5BOiSGic/giphy.gif" style="max-width: 400px; border-radius: 10px;" />
-            </div>
+        <div style="display: flex; justify-content: center; margin-top: 10px;">
+            <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNTcxamdneHkwcjFza2l4Y2JqY215MzJiemFycGR3cjY0eDQwdnZzaiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cbJJZ0zLfNulFNBjHI/giphy.gif" style="max-width: 400px; border-radius: 10px;" />
+        </div>
         """, unsafe_allow_html=True)
 
-        # Countdown timer
         countdown_text = st.empty()
         for i in range(5, 0, -1):
             countdown_text.markdown(f"<h2 style='text-align: center;'>⏳ {i}</h2>", unsafe_allow_html=True)
             time.sleep(1)
-
-        # Clear GIF and countdown
         gif_col.empty()
         countdown_text.empty()
 
-        # Predict winner
-        input_features = np.array([[stats1["gdp"] - stats2["gdp"],
-                                    stats1["military"] - stats2["military"],
-                                    stats1["literacy"] - stats2["literacy"],
-                                    stats1["birth"] - stats2["birth"],
-                                    stats1["death"] - stats2["death"]]])
-        result = model.predict(input_features)[0]
-        winner = country1 if result == 1 else country2
+        draw_normalized_bar_chart(stats1, stats2, country1, country2)
 
-        # Show result after delay
+        if mode == "🤖 AI Model":
+            input_features = np.array([[stats1["gdp"] - stats2["gdp"],
+                                        stats1["military"] - stats2["military"],
+                                        stats1["literacy"] - stats2["literacy"],
+                                        stats1["birth"] - stats2["birth"],
+                                        stats1["death"] - stats2["death"]]])
+            input_scaled = scaler.transform(input_features)
+            result = model.predict(input_scaled)[0]
+            winner = country1 if result == 1 else country2
+        else:
+            score1 = calculate_score(stats1)
+            score2 = calculate_score(stats2)
+            winner = country1 if score1 > score2 else country2
+
+        st.session_state.match_history.append({
+            "country1": country1,
+            "country2": country2,
+            "winner": winner
+        })
+
+        st.sidebar.title("🏅 Match History")
+        if st.session_state.match_history:
+            for i, match in enumerate(reversed(st.session_state.match_history[-5:]), 1):
+                st.sidebar.write(f"**Match {i}**: {match['country1']} vs {match['country2']} → 🏆 {match['winner']}")
+        else:
+            st.sidebar.write("No matches yet. Start a battle!")
+
         st.success(f"🏆 **Winner: {winner}**")
-
-        # Result Sound
         st.markdown("""
             <audio autoplay>
                 <source src="https://www.fesliyanstudios.com/play-mp3/6671" type="audio/mp3">
             </audio>
         """, unsafe_allow_html=True)
-
-        # Celebration 🎈
         st.balloons()
