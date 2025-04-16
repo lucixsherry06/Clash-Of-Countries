@@ -21,10 +21,26 @@ scaler = joblib.load("battle_scaler.pkl")
 
 # Helper Functions
 def get_country_code(country_name):
+    special_cases = {
+        "Russia": "ru",
+        "United Kingdom": "gb",
+        "South Korea": "kr",
+        "North Korea": "kp",
+        "Iran": "ir",
+        "Vietnam": "vn",
+        "Vatican City": "va",
+        "United States": "us"
+        # Add more as needed
+    }
+
+    if country_name in special_cases:
+        return special_cases[country_name]
+
     try:
         return pycountry.countries.lookup(country_name).alpha_2.lower()
     except LookupError:
         return None
+
 
 def get_stats(country):
     row = df[df['Country'] == country].iloc[0]
@@ -143,7 +159,7 @@ if st.button("⚔️ Start the Battle"):
                 <source src="https://raw.githubusercontent.com/lucixsherry06/Clash-Of-Countries/refs/heads/main/music/three-two-one-fight-deep-voice-38382.mp3" type="audio/mp3">
             </audio>
         """, unsafe_allow_html=True)
-        for i in range(3, 0, -1):
+        for i in range(4, 0, -1):
             countdown_text.markdown(f"<h2 style='text-align: center;'>⏳ {i}</h2>", unsafe_allow_html=True)
             time.sleep(1)
         gif_col.empty()
@@ -179,4 +195,9 @@ if st.button("⚔️ Start the Battle"):
             st.sidebar.write("No matches yet. Start a battle!")
 
         st.success(f"🏆 **Winner: {winner}**")
+        st.markdown("""
+            <audio autoplay>
+                <source src="https://raw.githubusercontent.com/lucixsherry06/Clash-Of-Countries/refs/heads/main/music/success-1-6297.mp3" type="audio/mp3">
+            </audio>
+        """, unsafe_allow_html=True)
         st.balloons()
