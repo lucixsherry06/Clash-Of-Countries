@@ -10,21 +10,17 @@ import re
 from io import BytesIO
 import pycountry
 
-
-
-
-# Load dataset and model
+# ========== Load Data ==========
 df = pd.read_csv("cleaned_countries.csv")
 model = joblib.load("battle_model.pkl")
 
-# Extract stats from a country row
+# ========== Helper Functions ==========
 
 def get_country_code(country_name):
     try:
         return pycountry.countries.lookup(country_name).alpha_2.lower()
     except LookupError:
         return None
-    
 
 def get_stats(country):
     row = df[df['Country'] == country].iloc[0]
@@ -40,7 +36,6 @@ def get_stats(country):
         "death": num(row['People and Society: Death rate']),
     }
 
-# Show flag using API
 def show_flag(country_name):
     code = get_country_code(country_name)
     if code:
@@ -50,28 +45,24 @@ def show_flag(country_name):
             if response.status_code == 200:
                 st.image(Image.open(BytesIO(response.content)), width=80)
             else:
-                st.write("Flag not available.")
+                st.write("⚠️ Flag not available.")
         except:
-            st.write("Error fetching the flag.")
+            st.write("⚠️ Error fetching flag.")
     else:
-        st.write("Invalid country name.")
+        st.write("⚠️ Invalid country name.")
 
-# Streamlit settings
+# ========== Page Settings ==========
 st.set_page_config(page_title="Country Clash", layout="wide")
-
-# Title
 st.markdown("<h1 style='text-align: center;'>🌍 Country Clash</h1>", unsafe_allow_html=True)
 
-# Audio (background music)
-# This adds intro sound once when app is loaded
+# ========== Intro Music (Autoplay) ==========
 st.markdown("""
-    <audio autoplay>
-        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mp3">
-    </audio>
+<audio autoplay>
+  <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mp3">
+</audio>
 """, unsafe_allow_html=True)
 
-
-# Country selectors
+# ========== Country Selection ==========
 country_list = df['Country'].dropna().unique()
 col1, col2 = st.columns(2)
 with col1:
@@ -79,15 +70,14 @@ with col1:
 with col2:
     country2 = st.selectbox("Choose Country B", country_list)
 
-# Show flags
+# ========== Display Flags ==========
 col1, col2 = st.columns(2)
 with col1:
     show_flag(country1)
 with col2:
     show_flag(country2)
 
-
-# This adds a click sound when the button is pressed
+# ========== Click Sound Effect ==========
 components.html(
     """
     <script>
@@ -100,42 +90,59 @@ components.html(
     """, height=0
 )
 
-# Battle button
+# ========== Battle Button ==========
 if st.button("⚔️ Start the Battle"):
     if country1 == country2:
-        st.warning("Choose different countries!")
+        st.warning("⚠️ Choose different countries!")
     else:
-        st.spinner("Preparing the battle...")
-        time.sleep(1)
-        
-        stats1 = get_stats(country1)
-        stats2 = get_stats(country2)
+        with st.spinner("Preparing the battle..."):
+            time.sleep(1)
+            stats1 = get_stats(country1)
+            stats2 = get_stats(country2)
 
-        st.subheader(f"{country1} Stats:")
+        # Show Stats
+        st.subheader(f"📊 {country1} Stats:")
         st.write(stats1)
-        st.subheader(f"{country2} Stats:")
+        st.subheader(f"📊 {country2} Stats:")
         st.write(stats2)
 
+        # Show Pre-Battle Animation
+        st.markdown("### ⚔️ Battle Starts In...")
+        gif_col = st.empty()
+        gif_col.markdown("""
+            <div style="display: flex; justify-content: center; margin-top: 10px;">
+                <img src="https://media.giphy.com/media/3o7bu3XilJ5BOiSGic/giphy.gif" style="max-width: 400px; border-radius: 10px;" />
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Countdown timer
+        countdown_text = st.empty()
+        for i in range(5, 0, -1):
+            countdown_text.markdown(f"<h2 style='text-align: center;'>⏳ {i}</h2>", unsafe_allow_html=True)
+            time.sleep(1)
+
+        # Clear GIF and countdown
+        gif_col.empty()
+        countdown_text.empty()
+
+        # Predict winner
         input_features = np.array([[stats1["gdp"] - stats2["gdp"],
                                     stats1["military"] - stats2["military"],
                                     stats1["literacy"] - stats2["literacy"],
                                     stats1["birth"] - stats2["birth"],
                                     stats1["death"] - stats2["death"]]])
-
         result = model.predict(input_features)[0]
         winner = country1 if result == 1 else country2
-        
-        #Gif for battle result
-        st.markdown("### 🏴‍☠️ Flag Battle Result")
-        st.image("https://media.giphy.com/media/3o7bu3XilJ5BOiSGic/giphy.gif", use_column_width=True)
 
-
+        # Show result after delay
         st.success(f"🏆 **Winner: {winner}**")
-        #Result Sound (e.g., Victory or Defeat trumpet)
-        st.markdown("""
-    <audio autoplay>
-        <source src="https://www.fesliyanstudios.com/play-mp3/6671" type="audio/mp3">
-    </audio>
-""", unsafe_allow_html=True)
 
+        # Result Sound
+        st.markdown("""
+            <audio autoplay>
+                <source src="https://www.fesliyanstudios.com/play-mp3/6671" type="audio/mp3">
+            </audio>
+        """, unsafe_allow_html=True)
+
+        # Celebration 🎈
         st.balloons()
