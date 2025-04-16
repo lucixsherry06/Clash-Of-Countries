@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import joblib
@@ -62,7 +63,13 @@ st.set_page_config(page_title="Country Clash", layout="wide")
 st.markdown("<h1 style='text-align: center;'>🌍 Country Clash</h1>", unsafe_allow_html=True)
 
 # Audio (background music)
-st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
+# This adds intro sound once when app is loaded
+st.markdown("""
+    <audio autoplay>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mp3">
+    </audio>
+""", unsafe_allow_html=True)
+
 
 # Country selectors
 country_list = df['Country'].dropna().unique()
@@ -79,6 +86,19 @@ with col1:
 with col2:
     show_flag(country2)
 
+
+# This adds a click sound when the button is pressed
+components.html(
+    """
+    <script>
+    function playClickSound() {
+        var audio = new Audio("https://www.fesliyanstudios.com/play-mp3/387");
+        audio.play();
+    }
+    </script>
+    <button onclick="playClickSound()" style="display:none">Play</button>
+    """, height=0
+)
 
 # Battle button
 if st.button("⚔️ Start the Battle"):
@@ -104,6 +124,18 @@ if st.button("⚔️ Start the Battle"):
 
         result = model.predict(input_features)[0]
         winner = country1 if result == 1 else country2
+        
+        #Gif for battle result
+        st.markdown("### 🏴‍☠️ Flag Battle Result")
+        st.image("https://media.giphy.com/media/3o7bu3XilJ5BOiSGic/giphy.gif", use_column_width=True)
+
 
         st.success(f"🏆 **Winner: {winner}**")
+        #Result Sound (e.g., Victory or Defeat trumpet)
+        st.markdown("""
+    <audio autoplay>
+        <source src="https://www.fesliyanstudios.com/play-mp3/6671" type="audio/mp3">
+    </audio>
+""", unsafe_allow_html=True)
+
         st.balloons()
