@@ -75,28 +75,17 @@ def calculate_score(stats):
 # Page Config
 st.set_page_config(page_title="Country Clash", layout="wide")
 # 🎵 Background music with mute/unmute toggle using JS
-st.markdown("### 🔊 Background Music")
 mute_toggle = st.checkbox("🔇 Mute Music", value=False)
 
 components.html(f"""
     <audio id="bg-music" autoplay loop>
-        <source src="music/8-bit-loop-189494.mp3" type="audio/mp3">
-        Your browser does not support the audio element.
+        <source src="https://raw.githubusercontent.com/lucixsherry06/Clash-Of-Countries/refs/heads/main/music/8-bit-loop-189494.mp3" type="audio/mp3">
     </audio>
-
     <script>
-        const audio = document.getElementById('bg-music');
-        let isMuted = {str(mute_toggle).lower()};
-
-        window.onload = function() {{
+        document.addEventListener("DOMContentLoaded", function() {{
+            const audio = document.getElementById("bg-music");
             if (audio) {{
-                audio.volume = isMuted ? 0.0 : 0.6;
-            }}
-        }}
-
-        document.addEventListener('DOMContentLoaded', () => {{
-            if (audio) {{
-                audio.volume = isMuted ? 0.0 : 0.6;
+                audio.volume = {0.0 if mute_toggle else 0.5};
             }}
         }});
     </script>
@@ -125,18 +114,6 @@ with draw2:
 # Mode Selection
 mode = st.radio("Choose Battle Mode:", ["🤖 AI Model", "🧮 Formula-Based Scoring"])
 
-# Click Sound Effect
-components.html(
-    """
-    <script>
-    function playClickSound() {
-        var audio = new Audio("https://www.fesliyanstudios.com/play-mp3/387");
-        audio.play();
-    }
-    </script>
-    <button onclick="playClickSound()" style="display:none">Play</button>
-    """, height=0
-)
 
 # Battle Logic
 if st.button("⚔️ Start the Battle"):
@@ -159,9 +136,14 @@ if st.button("⚔️ Start the Battle"):
             <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNTcxamdneHkwcjFza2l4Y2JqY215MzJiemFycGR3cjY0eDQwdnZzaiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cbJJZ0zLfNulFNBjHI/giphy.gif" style="max-width: 400px; border-radius: 10px;" />
         </div>
         """, unsafe_allow_html=True)
-
+#Countdown 3,2,1
         countdown_text = st.empty()
-        for i in range(5, 0, -1):
+        st.markdown("""
+            <audio autoplay>
+                <source src="https://raw.githubusercontent.com/lucixsherry06/Clash-Of-Countries/refs/heads/main/music/three-two-one-fight-deep-voice-38382.mp3" type="audio/mp3">
+            </audio>
+        """, unsafe_allow_html=True)
+        for i in range(3, 0, -1):
             countdown_text.markdown(f"<h2 style='text-align: center;'>⏳ {i}</h2>", unsafe_allow_html=True)
             time.sleep(1)
         gif_col.empty()
@@ -197,9 +179,4 @@ if st.button("⚔️ Start the Battle"):
             st.sidebar.write("No matches yet. Start a battle!")
 
         st.success(f"🏆 **Winner: {winner}**")
-        st.markdown("""
-            <audio autoplay>
-                <source src="https://www.fesliyanstudios.com/play-mp3/6671" type="audio/mp3">
-            </audio>
-        """, unsafe_allow_html=True)
         st.balloons()
