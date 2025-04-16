@@ -81,12 +81,29 @@ def draw_normalized_bar_chart(stats1, stats2, country1, country2):
     st.plotly_chart(fig, use_container_width=True)
 
 def calculate_score(stats):
-    gdp_score = stats['gdp'] / 978007000000
-    military_score = stats['military'] / 30
-    literacy_score = stats['literacy'] / 100
-    birth_score = stats['birth'] / 46.6
-    death_score = 1 - (stats['death'] / 18.6)
-    return (gdp_score * 0.3 + military_score * 0.25 + literacy_score * 0.2 + birth_score * 0.15 + death_score * 0.1)
+    gdp = stats['gdp'] / 978007000000
+    military = stats['military'] / 30
+    literacy = stats['literacy'] / 100
+    birth = stats['birth'] / 46.6
+    death = 1 - (stats['death'] / 18.6)
+
+    score = (
+        gdp * 0.278 +
+        military * 0.278 +
+        literacy * 0.167 +
+        birth * 0.167 +
+        death * 0.111
+    )
+
+    return score, {
+        "GDP": round(gdp * 0.278, 3),
+        "Military": round(military * 0.278, 3),
+        "Literacy": round(literacy * 0.167, 3),
+        "Birth Rate": round(birth * 0.167, 3),
+        "Death Rate": round(death * 0.111, 3),
+        "Total Score": round(score, 3)
+    }
+
 
 # Page Config
 st.set_page_config(page_title="Clash Of Countries", layout="wide")
@@ -141,10 +158,10 @@ if st.button("⚔️ Start the Battle"):
             stats1 = get_stats(country1)
             stats2 = get_stats(country2)
 
-        st.subheader(f"📊 {country1} Stats:")
-        st.write(stats1)
-        st.subheader(f"📊 {country2} Stats:")
-        st.write(stats2)
+        # st.subheader(f"📊 {country1} Stats:")
+        # st.write(stats1)
+        # st.subheader(f"📊 {country2} Stats:")
+        # st.write(stats2)
 
         gif_col = st.empty()
         gif_col.markdown("""
@@ -177,9 +194,36 @@ if st.button("⚔️ Start the Battle"):
             result = model.predict(input_scaled)[0]
             winner = country1 if result == 1 else country2
         else:
-            score1 = calculate_score(stats1)
-            score2 = calculate_score(stats2)
+            score1, breakdown1 = calculate_score(stats1)
+            score2, breakdown2 = calculate_score(stats2)
+
             winner = country1 if score1 > score2 else country2
+            
+            # Show breakdown automatically (no toggle)
+            st.subheader(f"🧾 Score Breakdown — {country1}")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("💰 GDP", breakdown1["GDP"])
+            col2.metric("🪖 Military", breakdown1["Military"])
+            col3.metric("📚 Literacy", breakdown1["Literacy"])
+
+            col4, col5, col6 = st.columns(3)
+            col4.metric("👶 Birth Rate", breakdown1["Birth Rate"])
+            col5.metric("💀 Death Rate", breakdown1["Death Rate"])
+            col6.metric("🏅 Total Score", breakdown1["Total Score"])
+
+            st.subheader(f"🧾 Score Breakdown — {country2}")
+            col7, col8, col9 = st.columns(3)
+            col7.metric("💰 GDP", breakdown2["GDP"])
+            col8.metric("🪖 Military", breakdown2["Military"])
+            col9.metric("📚 Literacy", breakdown2["Literacy"])
+
+            col10, col11, col12 = st.columns(3)
+            col10.metric("👶 Birth Rate", breakdown2["Birth Rate"])
+            col11.metric("💀 Death Rate", breakdown2["Death Rate"])
+            col12.metric("🏅 Total Score", breakdown2["Total Score"])
+
+
+
 
         st.session_state.match_history.append({
             "country1": country1,
@@ -195,6 +239,7 @@ if st.button("⚔️ Start the Battle"):
             st.sidebar.write("No matches yet. Start a battle!")
 
         st.success(f"🏆 **Winner: {winner}**")
+        st.info(f"🎙️ {winner} won this battle due to higher weighted scores across key stats like GDP, literacy, or lower death rate.")
         st.markdown("""
             <audio autoplay>
                 <source src="https://raw.githubusercontent.com/lucixsherry06/Clash-Of-Countries/refs/heads/main/music/success-1-6297.mp3" type="audio/mp3">
