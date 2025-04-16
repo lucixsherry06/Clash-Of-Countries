@@ -89,7 +89,7 @@ def calculate_score(stats):
     return (gdp_score * 0.3 + military_score * 0.25 + literacy_score * 0.2 + birth_score * 0.15 + death_score * 0.1)
 
 # Page Config
-st.set_page_config(page_title="Country Clash", layout="wide")
+st.set_page_config(page_title="Clash Of Countries", layout="wide")
 # 🎵 Background music with mute/unmute toggle using JS
 mute_toggle = st.checkbox("🔇 Mute Music", value=False)
 
@@ -108,7 +108,7 @@ components.html(f"""
 """, height=0)
 
 #Title and Description
-st.markdown("<h1 style='text-align: center;'>🌍 Country Clash</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>🌍 Clash Of Countries</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center;'>Choose two countries to battle it out and see which one comes out on top!</p>", unsafe_allow_html=True)
 
 
