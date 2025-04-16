@@ -11,6 +11,7 @@ import pycountry
 
 
 
+
 # Load dataset and model
 df = pd.read_csv("cleaned_countries.csv")
 model = joblib.load("battle_model.pkl")
@@ -39,13 +40,20 @@ def get_stats(country):
     }
 
 # Show flag using API
-def show_flag(name):
-    try:
-        url = f"https://countryflagsapi.com/png/{name.replace(' ', '%20')}"
-        img = requests.get(url).content
-        st.image(Image.open(BytesIO(img)), width=100)
-    except:
-        st.write("No flag")
+def show_flag(country_name):
+    code = get_country_code(country_name)
+    if code:
+        url = f"https://flagcdn.com/w80/{code}.png"
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                st.image(Image.open(BytesIO(response.content)), width=80)
+            else:
+                st.write("Flag not available.")
+        except:
+            st.write("Error fetching the flag.")
+    else:
+        st.write("Invalid country name.")
 
 # Streamlit settings
 st.set_page_config(page_title="Country Clash", layout="wide")
@@ -70,6 +78,7 @@ with col1:
     show_flag(country1)
 with col2:
     show_flag(country2)
+
 
 # Battle button
 if st.button("⚔️ Start the Battle"):
